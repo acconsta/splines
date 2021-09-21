@@ -1,6 +1,10 @@
-.App {
-  text-align: center;
+body {
+  display: grid;
+  height: 100vh;
+  margin: 0;
+  place-items: center center;
 }
+
 
 .App-logo {
   height: 40vmin;
@@ -35,4 +39,11 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+canvas {
+  margin: auto;
+  border-width: 1px;
+  border-color: black;
+  border-style: solid;
 }
