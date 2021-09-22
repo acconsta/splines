@@ -1,6 +1,6 @@
 import React from 'react';
 import { Matrix, solve } from 'ml-matrix';
-import Splines from './spline';
+import { Splines, Point } from './spline';
 import assert from 'assert';
 
 function drawSine(ctx: CanvasRenderingContext2D, amplitude: number) {
@@ -38,23 +38,6 @@ function drawSine(ctx: CanvasRenderingContext2D, amplitude: number) {
     return points;
 }
 
-function fit(ctx: CanvasRenderingContext2D, points: Array<Array<number>>) {
-    let xy = new Matrix(points);
-    let x = xy.getColumnVector(0);
-    let y = xy.getColumnVector(1);
-    assert(x.columns === 1);
-    assert(y.columns === 1);
-    x.addColumn(0, Matrix.ones(x.rows, 1))
-    const beta = solve(x.transpose().mmul(x), x.transpose().mmul(y)).to1DArray()
-    console.log(beta);
-    ctx.beginPath();
-    x.to1DArray().forEach(x => {
-        let yhat = beta[0] + beta[1] * x;
-        ctx.lineTo(x, yhat);
-    })
-    ctx.stroke();
-}
-
 type CanvasState = {
     amplitude: number
 }
@@ -80,7 +63,14 @@ class Canvas extends React.Component<CanvasState> {
         let order = 3;
         let splines = new Splines(knots, order);
         // console.log(splines.eval(10))
+        let points: Point[] = []
+        for (let i = 0; i < 10; i++) {
+            points.push(new Point(Math.random(), Math.random()))
+        }
+        splines.setPoints(points)
+        splines.fit()
         splines.draw(this.ctx);
+        // splines.drawBases(this.ctx);
     }
 
     render() {
