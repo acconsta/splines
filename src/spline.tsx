@@ -17,14 +17,24 @@ class Splines {
     order: number
     controls: number[] = []
     points: Point[] = []
+    lambda: number = 0.0001
+    learning_rate: number = 0.05
+    xmat: Matrix = new Matrix(0, 0)
+    ymat: Matrix = new Matrix(0, 0)
 
-    constructor(knots: number[], order: number) {
-        assert(knots.length > 1)
-        // TODO: pad knots
-        console.log("knots", knots)
+    constructor(numKnots: number, order: number) {
+        assert(numKnots > 1)
+        console.log("knots", numKnots)
         console.log("order", order)
+        let knots = []
+        for (let i = 0; i < numKnots; i++) {
+            knots.push(i / (numKnots - 1))
+        }
+        knots = new Array(order).fill(0).concat(knots, new Array(order).fill(1))
         this.knots = knots
+        console.log(knots)
         this.order = order
+        this.controls = Matrix.zeros(this.numBasis(), 1).to1DArray()
     }
 
     findInterval(x: number): number {
@@ -43,9 +53,6 @@ class Splines {
 
     setPoints(points: Point[]) {
         this.points = points
-    }
-
-    fit() {
         let xarr: number[][] = [];
         let yarr: number[] = [];
         for (let point of this.points) {
@@ -59,18 +66,27 @@ class Splines {
                 controls[i] = 0;
             }
         }
-        const xmat = new Matrix(xarr);
-        const ymat = new Matrix([yarr]).transpose();
-        const lambda = 0.0001
+        this.xmat = new Matrix(xarr);
+        this.ymat = new Matrix([yarr]).transpose();
+    }
+
+    fit() {
         // Ridge regression estimator
-        const left = xmat.transpose().mmul(xmat).add(Matrix.identity(xmat.columns).mul(lambda))
-        const right = xmat.transpose().mmul(ymat)
+        const left = this.xmat.transpose().mmul(this.xmat).add(Matrix.identity(this.xmat.columns).mul(this.lambda))
+        const right = this.xmat.transpose().mmul(this.ymat)
         const beta = solve(left, right).to1DArray()
         this.controls = beta;
     }
 
     fitIter() {
-
+        const xmat = this.xmat
+        const ymat = this.ymat
+        let beta = new Matrix([this.controls]).transpose()
+        const grad = xmat.transpose().mmul(ymat).mul(-2).add(xmat.transpose().mmul(xmat).mmul(beta).mul(2))
+        const update = grad.mul(this.learning_rate * -1)
+        this.controls = beta.add(update).to1DArray()
+        const step_size = update.transpose().mmul(update).get(0, 0)
+        return step_size
     }
 
     deBoor(k: number, x: number, controls: number[]) {
@@ -131,8 +147,12 @@ class Splines {
         const width = ctx.canvas.width
         const colors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet'];
         ctx.clearRect(0, 0, width, height)
-        ctx.strokeStyle = 'red';
+        ctx.strokeStyle = '#1976d2';
+        ctx.lineWidth = 3
         ctx.beginPath()
+        const transformX = (x: number) => x * width
+        const transformY = (y: number) => y * height
+
         for (let x = 0; x <= 1; x += (1 / 400)) {
             let y = this.eval(x, this.controls);
             y = (y * height);
@@ -148,7 +168,7 @@ class Splines {
         ctx.fillStyle = 'black';
         for (let point of this.points) {
             ctx.beginPath()
-            ctx.arc((point.x) * width, point.y * height, 5, 0, 2 * Math.PI)
+            ctx.arc(transformX(point.x), transformY(point.y), 5, 0, 2 * Math.PI)
             ctx.fill();
             ctx.stroke()
         }

@@ -5,17 +5,25 @@ import './App.css';
 
 
 function App() {
-  const [amplitude, setAmplitude] = React.useState(0);
-  function handleSliderChange(e: any) {
-    setAmplitude(e.target.value);
-    // console.log(amplitude);
-  }
+  const [numberOfKnots, setNumberOfKnots] = React.useState(5);
+  const [degreeOfSpline, setDegreeOfSpline] = React.useState(3);
   return (
     <div className="App">
-      <Canvas amplitude={amplitude}></Canvas>
-      <div>Amplitude</div>
+      <h1>Regression Splines Demo</h1>
+      <Canvas numberOfKnots={numberOfKnots}></Canvas>
+      <div>Number of Knots: {numberOfKnots}</div>
       <Slider
-        onChange={handleSliderChange}
+        onChange={(e: any) => setNumberOfKnots(e.target.value)}
+        defaultValue={5}
+        min={2}
+        max={10}
+      />
+      <div>Degree of Spline: {degreeOfSpline}</div>
+      <Slider
+        onChange={(e: any) => setDegreeOfSpline(e.target.value)}
+        defaultValue={2}
+        min={1}
+        max={5}
       />
     </div>
   );

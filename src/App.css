@@ -44,6 +44,6 @@ body {
 canvas {
   margin: auto;
   border-width: 1px;
-  border-color: black;
+  border-color: lightgrey;
   border-style: solid;
 }

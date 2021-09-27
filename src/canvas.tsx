@@ -1,7 +1,5 @@
 import React from 'react';
-import { Matrix, solve } from 'ml-matrix';
 import { Splines, Point } from './spline';
-import assert from 'assert';
 
 function drawSine(ctx: CanvasRenderingContext2D, amplitude: number) {
     // http://steve.hollasch.net/cgindex/math/inccos.html
@@ -39,16 +37,28 @@ function drawSine(ctx: CanvasRenderingContext2D, amplitude: number) {
 }
 
 type CanvasState = {
-    amplitude: number
+    numberOfKnots: number
 }
 
 class Canvas extends React.Component<CanvasState> {
-    canvas: React.RefObject<HTMLCanvasElement>;
-    ctx: CanvasRenderingContext2D | null = null;
+    canvas: React.RefObject<HTMLCanvasElement>
+    ctx: CanvasRenderingContext2D | null = null
+    points: Point[] = []
+    splines: Splines
 
     constructor(props: CanvasState) {
         super(props);
         this.canvas = React.createRef();
+        this.splines = new Splines(5, 3);
+    }
+
+    componentDidMount() {
+        this.componentDidUpdate()
+        if (this.ctx) {
+            this.ctx.font = 'bold 30px sans-serif';
+            this.ctx.textAlign = 'center'
+            this.ctx.fillText("Click Me", this.ctx.canvas.width / 2, this.ctx.canvas.height / 2)
+        }
     }
 
     componentDidUpdate() {
@@ -56,26 +66,38 @@ class Canvas extends React.Component<CanvasState> {
         if (this.ctx === null) {
             return null;
         }
-        console.log(this.props.amplitude);
-        // let points = drawSine(this.ctx, this.props.amplitude);
-        // fit(this.ctx, points);
-        let knots = [0, 0, 0, 0, 0.25, 0.5, 0.75, 1, 1, 1, 1];
-        let order = 3;
-        let splines = new Splines(knots, order);
-        // console.log(splines.eval(10))
-        let points: Point[] = []
-        for (let i = 0; i < 10; i++) {
-            points.push(new Point(Math.random(), Math.random()))
+        this.ctx.canvas.onclick = ev => {
+            const canvas = this.ctx?.canvas
+            if (!canvas) {
+                return;
+            }
+            const [height, width] = [canvas.height, canvas.width]
+            this.points.push(new Point(ev.offsetX / width, ev.offsetY / height))
+            this.splines.setPoints(this.points)
+            const callback = () => {
+                const step_size = this.splines.fitIter()
+                let ctx = this.ctx || this.canvas?.current?.getContext("2d") as CanvasRenderingContext2D;
+                this.splines.draw(ctx)
+                if (step_size > 1e-6) {
+                    window.requestAnimationFrame(callback)
+                }
+            }
+            window.requestAnimationFrame(callback)
         }
-        splines.setPoints(points)
-        splines.fit()
-        splines.draw(this.ctx);
+        // let points: Point[] = []
+        // const numPoints = 5;
+        // for (let i = 0; i < numPoints; i++) {
+        //     points.push(new Point(Math.random(), Math.random()))
+        // }
+        // splines.setPoints(points)
+        // splines.fit()
+        // splines.draw(this.ctx);
         // splines.drawBases(this.ctx);
     }
 
     render() {
         return (
-            <canvas ref={this.canvas} width={840} height={625} />
+            <canvas ref={this.canvas} width={850} height={625} />
         )
     }
 }
