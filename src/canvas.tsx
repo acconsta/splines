@@ -38,6 +38,7 @@ function drawSine(ctx: CanvasRenderingContext2D, amplitude: number) {
 
 type CanvasState = {
     numberOfKnots: number
+    degreeOfSpline: number
 }
 
 class Canvas extends React.Component<CanvasState> {
@@ -49,15 +50,32 @@ class Canvas extends React.Component<CanvasState> {
     constructor(props: CanvasState) {
         super(props);
         this.canvas = React.createRef();
-        this.splines = new Splines(5, 3);
+        this.splines = new Splines(props.numberOfKnots, props.degreeOfSpline);
     }
 
     componentDidMount() {
+        if (this.canvas.current) {
+            const main = document.getElementsByTagName("main")[0]
+            console.log(main)
+            this.canvas.current.height = main.clientHeight - 20
+            this.canvas.current.width = main.clientWidth - 5
+        }
         this.componentDidUpdate()
         if (this.ctx) {
-            this.ctx.font = 'bold 30px sans-serif';
-            this.ctx.textAlign = 'center'
-            this.ctx.fillText("Click Me", this.ctx.canvas.width / 2, this.ctx.canvas.height / 2)
+            let hue = 0;
+            let drawClickMeText = () => {
+                if (!this.ctx || this.splines.points.length) {
+                    return
+                }
+                this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height)
+                this.ctx.font = 'bold 36px sans-serif';
+                this.ctx.textAlign = 'center'
+                this.ctx.fillStyle = `hsla(${hue}, 100%, 50%, 1)`
+                hue += 0.5
+                this.ctx.fillText("Click Me", this.ctx.canvas.width / 2, this.ctx.canvas.height / 2)
+                window.requestAnimationFrame(drawClickMeText)
+            }
+            window.requestAnimationFrame(drawClickMeText)
         }
     }
 
@@ -74,30 +92,23 @@ class Canvas extends React.Component<CanvasState> {
             const [height, width] = [canvas.height, canvas.width]
             this.points.push(new Point(ev.offsetX / width, ev.offsetY / height))
             this.splines.setPoints(this.points)
-            const callback = () => {
-                const step_size = this.splines.fitIter()
-                let ctx = this.ctx || this.canvas?.current?.getContext("2d") as CanvasRenderingContext2D;
-                this.splines.draw(ctx)
-                if (step_size > 1e-6) {
-                    window.requestAnimationFrame(callback)
-                }
+            if (this.ctx) {
+                this.splines.drawLoop(this.ctx);
             }
-            window.requestAnimationFrame(callback)
         }
-        // let points: Point[] = []
-        // const numPoints = 5;
-        // for (let i = 0; i < numPoints; i++) {
-        //     points.push(new Point(Math.random(), Math.random()))
-        // }
-        // splines.setPoints(points)
-        // splines.fit()
-        // splines.draw(this.ctx);
-        // splines.drawBases(this.ctx);
     }
 
     render() {
+        this.splines.setKnotsAndOrder(this.props.numberOfKnots, this.props.degreeOfSpline)
+        if (this.ctx) {
+            this.splines.drawLoop(this.ctx)
+        }
         return (
-            <canvas ref={this.canvas} width={850} height={625} />
+            <canvas
+                ref={this.canvas}
+                width={1}
+                height={1}
+            />
         )
     }
 }

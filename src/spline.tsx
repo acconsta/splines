@@ -13,28 +13,37 @@ class Point {
 
 
 class Splines {
-    knots: number[]
-    order: number
+    knots: number[] = [0, 1]
+    order: number = 3
     controls: number[] = []
     points: Point[] = []
     lambda: number = 0.0001
     learning_rate: number = 0.05
     xmat: Matrix = new Matrix(0, 0)
     ymat: Matrix = new Matrix(0, 0)
+    drawing = false
 
     constructor(numKnots: number, order: number) {
+        this.setKnotsAndOrder(numKnots, order)
+    }
+
+    setKnotsAndOrder(numKnots: number, order: number) {
         assert(numKnots > 1)
-        console.log("knots", numKnots)
-        console.log("order", order)
+        this.drawing = false
         let knots = []
         for (let i = 0; i < numKnots; i++) {
             knots.push(i / (numKnots - 1))
         }
         knots = new Array(order).fill(0).concat(knots, new Array(order).fill(1))
         this.knots = knots
-        console.log(knots)
         this.order = order
-        this.controls = Matrix.zeros(this.numBasis(), 1).to1DArray()
+        // Resize controls array to right size
+        while (this.controls.length < this.numBasis()) {
+            this.controls.push(0)
+        }
+        this.controls = this.controls.slice(0, this.numBasis())
+        this.setPoints(this.points)
+        // this.drawLoop()
     }
 
     findInterval(x: number): number {
@@ -56,6 +65,7 @@ class Splines {
         let xarr: number[][] = [];
         let yarr: number[] = [];
         for (let point of this.points) {
+            // Compute new basis at the points
             let controls = new Array(this.numBasis()).fill(0);
             xarr.push([])
             yarr.push(point.y);
@@ -70,7 +80,7 @@ class Splines {
         this.ymat = new Matrix([yarr]).transpose();
     }
 
-    fit() {
+    fitExact() {
         // Ridge regression estimator
         const left = this.xmat.transpose().mmul(this.xmat).add(Matrix.identity(this.xmat.columns).mul(this.lambda))
         const right = this.xmat.transpose().mmul(this.ymat)
@@ -79,6 +89,9 @@ class Splines {
     }
 
     fitIter() {
+        if (this.points.length === 0) {
+            return 0;
+        }
         const xmat = this.xmat
         const ymat = this.ymat
         let beta = new Matrix([this.controls]).transpose()
@@ -145,7 +158,6 @@ class Splines {
         let started = false;
         const height = ctx.canvas.height
         const width = ctx.canvas.width
-        const colors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet'];
         ctx.clearRect(0, 0, width, height)
         ctx.strokeStyle = '#1976d2';
         ctx.lineWidth = 3
@@ -172,6 +184,21 @@ class Splines {
             ctx.fill();
             ctx.stroke()
         }
+    }
+
+    drawLoop(ctx: CanvasRenderingContext2D) {
+        this.drawing = true
+        const callback = () => {
+            if (!this.drawing) {
+                return
+            }
+            const step_size = this.fitIter()
+            this.draw(ctx)
+            if (step_size > 1e-6) {
+                window.requestAnimationFrame(callback)
+            }
+        }
+        window.requestAnimationFrame(callback)
     }
 }
 
